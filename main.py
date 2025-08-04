@@ -1,10 +1,8 @@
-from click import clear
-from flask import Flask, render_template, redirect, url_for, flash, abort, request
+from flask import Flask, render_template, redirect, url_for, flash, request, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_bootstrap import Bootstrap
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 from flask_ckeditor import CKEditor
-from markupsafe import Markup
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date
 from functools import wraps
@@ -13,35 +11,14 @@ import hashlib
 import os
 import smtplib
 from dotenv import load_dotenv
+
+# Load environment variables
 load_dotenv()
 
-MY_EMAIL = os.getenv("MY_EMAIL")
-MY_PASSWORD = os.getenv("MY_PASSWORD")
-
-basedir = os.path.abspath(os.path.dirname(__file__))
-
+# App setup
 app = Flask(__name__)
-
-# Config using environment variables
-# Config using environment variables
-app.config['SECRET_KEY'] = os.environ.get('FLASK_KEY', 'dev-default-key')  # fallback for local dev
+app.config['SECRET_KEY'] = os.environ.get('FLASK_KEY', 'dev-default-key')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DB_URI", "sqlite:///instance/posts.db")
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['CKEDITOR_PKG_TYPE'] = 'standard'
-
-
-
-# Generate Gravatar URL manually
-def gravatar_url(email, size=100, default='identicon', rating='g'):
-    email = email.strip().lower().encode('utf-8')
-    hash_email = hashlib.md5(email).hexdigest()
-    return f"https://www.gravatar.com/avatar/{hash_email}?s={size}&d={default}&r={rating}"
-
-app.jinja_env.globals['gravatar'] = gravatar_url
-
-# Config
-app.config['SECRET_KEY'] = 'your-secret-key'
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(basedir, 'instance', 'posts.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['CKEDITOR_PKG_TYPE'] = 'standard'
 
@@ -49,6 +26,11 @@ ckeditor = CKEditor(app)
 Bootstrap(app)
 db = SQLAlchemy(app)
 
+# Email credentials
+MY_EMAIL = os.getenv("MY_EMAIL")
+MY_PASSWORD = os.getenv("MY_PASSWORD")
+
+# Login manager setup
 login_manager = LoginManager()
 login_manager.init_app(app)
 
@@ -56,6 +38,15 @@ login_manager.init_app(app)
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# Gravatar support
+def gravatar_url(email, size=100, default='identicon', rating='g'):
+    email = email.strip().lower().encode('utf-8')
+    hash_email = hashlib.md5(email).hexdigest()
+    return f"https://www.gravatar.com/avatar/{hash_email}?s={size}&d={default}&r={rating}"
+
+app.jinja_env.globals['gravatar'] = gravatar_url
+
+# MODELS
 class User(UserMixin, db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
@@ -87,6 +78,7 @@ class Comment(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey("blog_posts.id"))
     parent_post = db.relationship("BlogPost", back_populates="comments")
 
+# ROUTES
 @app.route('/')
 def get_all_posts():
     posts = BlogPost.query.all()
@@ -104,7 +96,6 @@ def register():
         new_user = User(email=form.email.data, name=form.name.data, password=hashed_pw)
         db.session.add(new_user)
         db.session.commit()
-
         login_user(new_user)
         return redirect(url_for("get_all_posts"))
     return render_template("register.html", form=form, current_user=current_user)
@@ -140,8 +131,11 @@ def show_post(post_id):
         if not current_user.is_authenticated:
             flash("You need to login or register to comment.")
             return redirect(url_for("login"))
-
-        new_comment = Comment(text=form.comment_text.data, comment_author=current_user, parent_post=requested_post)
+        new_comment = Comment(
+            text=form.comment_text.data,
+            comment_author=current_user,
+            parent_post=requested_post
+        )
         db.session.add(new_comment)
         db.session.commit()
         form.comment_text.data = ""
@@ -169,7 +163,7 @@ def contact():
                 connection.login(user=MY_EMAIL, password=MY_PASSWORD)
                 connection.sendmail(
                     from_addr=MY_EMAIL,
-                    to_addrs=MY_EMAIL,  # You can also forward to another email
+                    to_addrs=MY_EMAIL,
                     msg=f"Subject:New Contact Form Submission\n\n{full_message}"
                 )
             msg_sent = True
@@ -178,12 +172,7 @@ def contact():
 
     return render_template("contact.html", current_user=current_user, msg_sent=msg_sent)
 
-
-
-# POST OWNER OR ADMIN DECORATOR
-# POST OWNER OR ADMIN DECORATOR
-from flask import flash, redirect, url_for
-
+# DECORATOR: POST OWNER OR ADMIN ONLY
 def post_owner_or_admin_only(f):
     @wraps(f)
     def decorated_function(post_id, *args, **kwargs):
@@ -191,20 +180,14 @@ def post_owner_or_admin_only(f):
         if not post:
             flash("Post not found.")
             return redirect(url_for("get_all_posts"))
-
         if not current_user.is_authenticated:
             flash("You must be logged in to perform this action.")
             return redirect(url_for("login"))
-
-        print(f"Post author ID: {post.author_id}, Current user ID: {current_user.id}")
-
         if post.author_id != current_user.id and current_user.id != 1:
             flash("You do not have permission to modify this post.")
             return redirect(url_for("get_all_posts"))
-
         return f(post_id, *args, **kwargs)
     return decorated_function
-
 
 @app.route("/new-post", methods=["GET", "POST"])
 @login_required
@@ -251,13 +234,8 @@ def delete_post(post_id):
     db.session.commit()
     return redirect(url_for('get_all_posts'))
 
+# MAIN RUN
 if __name__ == "__main__":
-    if not os.path.exists("instance"):
-        os.makedirs("instance")
-
     with app.app_context():
         db.create_all()
-
-    # Don't use debug=True in production
     app.run(debug=False)
-

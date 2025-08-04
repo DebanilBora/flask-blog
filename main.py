@@ -24,7 +24,8 @@ app = Flask(__name__)
 
 # Config using environment variables
 app.config['SECRET_KEY'] = os.environ.get('FLASK_KEY', 'dev-default-key')  # fallback for local dev
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DB_URI', f"sqlite:///{os.path.join(basedir, 'instance', 'posts.db')}")
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DB_URI", "sqlite:///instance/posts.db")
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['CKEDITOR_PKG_TYPE'] = 'standard'
 

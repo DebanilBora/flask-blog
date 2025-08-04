@@ -13,6 +13,10 @@ import smtplib
 from dotenv import load_dotenv
 
 # Load environment variables
+# [Your imports remain unchanged]
+# ... all the imports ...
+
+# Load environment variables
 load_dotenv()
 
 # App setup
@@ -26,11 +30,10 @@ ckeditor = CKEditor(app)
 Bootstrap(app)
 db = SQLAlchemy(app)
 
-# Email credentials
 MY_EMAIL = os.getenv("MY_EMAIL")
 MY_PASSWORD = os.getenv("MY_PASSWORD")
 
-# Login manager setup
+# Login manager
 login_manager = LoginManager()
 login_manager.init_app(app)
 
@@ -38,7 +41,7 @@ login_manager.init_app(app)
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# Gravatar support
+# Gravatar
 def gravatar_url(email, size=100, default='identicon', rating='g'):
     email = email.strip().lower().encode('utf-8')
     hash_email = hashlib.md5(email).hexdigest()
@@ -46,14 +49,13 @@ def gravatar_url(email, size=100, default='identicon', rating='g'):
 
 app.jinja_env.globals['gravatar'] = gravatar_url
 
-# MODELS
+# Models
 class User(UserMixin, db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(100), nullable=False)
     name = db.Column(db.String(100), nullable=False)
-
     posts = db.relationship("BlogPost", back_populates="author")
     comments = db.relationship("Comment", back_populates="comment_author")
 
@@ -78,7 +80,7 @@ class Comment(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey("blog_posts.id"))
     parent_post = db.relationship("BlogPost", back_populates="comments")
 
-# ROUTES
+# Routes
 @app.route('/')
 def get_all_posts():
     posts = BlogPost.query.all()
@@ -91,7 +93,6 @@ def register():
         if User.query.filter_by(email=form.email.data).first():
             flash("You've already signed up with that email, log in instead!")
             return redirect(url_for('login'))
-
         hashed_pw = generate_password_hash(form.password.data, method='pbkdf2:sha256', salt_length=8)
         new_user = User(email=form.email.data, name=form.name.data, password=hashed_pw)
         db.session.add(new_user)
@@ -126,20 +127,14 @@ def logout():
 def show_post(post_id):
     form = CommentForm()
     requested_post = BlogPost.query.get(post_id)
-
     if form.validate_on_submit():
         if not current_user.is_authenticated:
             flash("You need to login or register to comment.")
             return redirect(url_for("login"))
-        new_comment = Comment(
-            text=form.comment_text.data,
-            comment_author=current_user,
-            parent_post=requested_post
-        )
+        new_comment = Comment(text=form.comment_text.data, comment_author=current_user, parent_post=requested_post)
         db.session.add(new_comment)
         db.session.commit()
         form.comment_text.data = ""
-
     return render_template("post.html", post=requested_post, current_user=current_user, form=form)
 
 @app.route("/about")
@@ -154,25 +149,18 @@ def contact():
         email = request.form.get("email")
         phone = request.form.get("phone")
         message = request.form.get("message")
-
         full_message = f"Name: {name}\nEmail: {email}\nPhone: {phone}\n\nMessage:\n{message}"
-
         try:
             with smtplib.SMTP("smtp.gmail.com", port=587) as connection:
                 connection.starttls()
                 connection.login(user=MY_EMAIL, password=MY_PASSWORD)
-                connection.sendmail(
-                    from_addr=MY_EMAIL,
-                    to_addrs=MY_EMAIL,
-                    msg=f"Subject:New Contact Form Submission\n\n{full_message}"
-                )
+                connection.sendmail(from_addr=MY_EMAIL, to_addrs=MY_EMAIL, msg=f"Subject:New Contact Form Submission\n\n{full_message}")
             msg_sent = True
         except Exception as e:
             flash(f"Email could not be sent: {str(e)}")
-
     return render_template("contact.html", current_user=current_user, msg_sent=msg_sent)
 
-# DECORATOR: POST OWNER OR ADMIN ONLY
+# Admin decorator
 def post_owner_or_admin_only(f):
     @wraps(f)
     def decorated_function(post_id, *args, **kwargs):
@@ -234,8 +222,13 @@ def delete_post(post_id):
     db.session.commit()
     return redirect(url_for('get_all_posts'))
 
-# MAIN RUN
-if __name__ == "__main__":
+# TEMP route to initialize DB
+@app.route('/create-tables')
+def create_tables():
+    db.create_all()
+    return "✅ Tables created successfully."
+
+# Production entry point
+if __name__ != "__main__":
     with app.app_context():
         db.create_all()
-    app.run(debug=False)

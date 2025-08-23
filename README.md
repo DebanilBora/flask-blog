@@ -1,7 +1,7 @@
 # Flask Blog 📝
 
-A simple **Flask-based Blog Application** where users can create, edit, and delete blog posts.  
-This project demonstrates **Flask, SQLAlchemy, WTForms, and Bootstrap** integration, and is deployed on **Render** with a PostgreSQL database.  
+A simple **Flask-based Blog Application** with full CRUD functionality, user authentication, CKEditor integration, PostgreSQL database, and SMTP email support.  
+This project is deployed on **Render** with PostgreSQL as the database service.  
 
 ---
 

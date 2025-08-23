@@ -11,11 +11,13 @@ This project is deployed on **Render** with PostgreSQL as the database service.
 
 
 ## ✨ Features  
-- Create, edit, and delete blog posts  
-- Rich text editor with CKEditor  
-- Database powered by PostgreSQL  
-- Bootstrap styling for responsive UI  
-- Deployment-ready on Render  
+- 📝 Create, edit, and delete blog posts (CRUD)  
+- 🔐 User authentication (register/login/logout)  
+- 🖊️ Rich text editor with CKEditor  
+- 💾 PostgreSQL database integration  
+- ✉️ Contact form with SMTP (smtplib) email support  
+- 🎨 Responsive UI with Bootstrap  
+- ☁️ Deployment-ready on Render 
 
 ---
 
